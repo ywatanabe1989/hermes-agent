@@ -418,6 +418,7 @@ export const BACKEND_EVENT_NAMES = [
   'message.interim',
   'message.reaction',
   'message.start',
+  'message.user',
   'moa.aggregating',
   'moa.phase',
   'moa.progress',
@@ -515,6 +516,7 @@ export interface BackendGatewayEventMap {
   'message.interim': MessageInterimPayload
   'message.reaction': Record<string, unknown>
   'message.start': undefined
+  'message.user': TextPayload
   'moa.aggregating': MoaAggregatingPayload
   'moa.phase': MoaPhasePayload
   'moa.progress': MoaProgressPayload

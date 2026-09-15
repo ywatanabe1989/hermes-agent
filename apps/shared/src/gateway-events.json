@@ -21,6 +21,7 @@
   "message.interim",
   "message.reaction",
   "message.start",
+  "message.user",
   "moa.aggregating",
   "moa.phase",
   "moa.progress",

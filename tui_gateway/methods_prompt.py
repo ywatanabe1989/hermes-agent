@@ -550,6 +550,8 @@ def _(rid, params: dict) -> dict:
     # Off-screen sends (widget intents) type the row so no client renders a bubble;
     # whitelisted to "hidden" — this RPC must not mint kinds.
     display_kind = "hidden" if params.get("display_kind") == "hidden" else None
+    render_user_message = (
+        display_kind is None and params.get("render_user_message") is True and isinstance(text, str))
     if (stopped := _typed_stop_phrase_response(rid, text)) is not None:
         return stopped
     if params.get("interrupted"):
@@ -617,6 +619,8 @@ def _(rid, params: dict) -> dict:
         busy_response = _handle_busy_submit(
             rid, sid, session, text, busy_transport, queued=bool(params.get("queued")), turn_author=turn_author)
         if busy_response is not None:
+            if render_user_message and not busy_response.get("error"):
+                _emit("message.user", sid, {"text": text})
             return busy_response
     raw_rebind_ids = params.get("rebind_survivor_row_ids")
     requested_rebind_ids = (
@@ -633,6 +637,8 @@ def _(rid, params: dict) -> dict:
         isolated_response = _submit_prompt_to_compute_host(
             rid, sid, session, text, display_kind=display_kind)
         if not isolated_response.get("error"):
+            if render_user_message:
+                _emit("message.user", sid, {"text": text})
             # The truncation already happened inline above (memory + DB).
             isolated_response["result"].update(survivor_fields)
             return isolated_response
@@ -658,6 +664,8 @@ def _(rid, params: dict) -> dict:
         daemon=True)
     # Handle lets session.interrupt tell a live turn from a stuck `running` flag.
     session["_run_thread"] = run_thread
+    if render_user_message:
+        _emit("message.user", sid, {"text": text})
     run_thread.start()
     return _ok(rid, {"status": "streaming", **survivor_fields})
 
