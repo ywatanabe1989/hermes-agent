@@ -12215,6 +12215,56 @@ def test_session_steer_calls_agent_steer_when_agent_supports_it():
     assert "interrupt_called" not in calls  # must NOT interrupt
 
 
+def test_render_user_message_opt_in_covers_prompt_submit_and_steer(monkeypatch):
+    """External controllers can mirror accepted input into every attached UI."""
+    emitted = []
+
+    class _Agent:
+        def steer(self, text):
+            return True
+
+    prompt_session = _session(agent=_Agent(), running=True)
+    steer_session = _session(agent=_Agent(), running=True)
+    server._sessions["prompt-sid"] = prompt_session
+    server._sessions["steer-sid"] = steer_session
+    monkeypatch.setattr(
+        server, "_emit", lambda event, sid, payload=None: emitted.append((event, sid, payload)))
+    monkeypatch.setattr(server, "_load_busy_input_mode", lambda: "steer")
+    try:
+        prompt_response = server.handle_request(
+            {
+                "id": "prompt",
+                "method": "prompt.submit",
+                "params": {
+                    "render_user_message": True,
+                    "session_id": "prompt-sid",
+                    "text": "message from Telegram",
+                },
+            }
+        )
+        steer_response = server.handle_request(
+            {
+                "id": "steer",
+                "method": "session.steer",
+                "params": {
+                    "render_user_message": True,
+                    "session_id": "steer-sid",
+                    "text": "message from Cards",
+                },
+            }
+        )
+    finally:
+        server._sessions.pop("prompt-sid", None)
+        server._sessions.pop("steer-sid", None)
+
+    assert prompt_response["result"]["status"] == "steered"
+    assert steer_response["result"]["status"] == "queued"
+    assert [row for row in emitted if row[0] == "message.user"] == [
+        ("message.user", "prompt-sid", {"text": "message from Telegram"}),
+        ("message.user", "steer-sid", {"text": "message from Cards"}),
+    ]
+
+
 def test_session_steer_rejects_empty_text():
     server._sessions["sid"] = _session(
         agent=types.SimpleNamespace(steer=lambda t: True)

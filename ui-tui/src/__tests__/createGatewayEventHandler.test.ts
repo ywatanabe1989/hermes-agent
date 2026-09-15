@@ -92,6 +92,20 @@ describe('createGatewayEventHandler', () => {
     expect(getTurnState().tools).toEqual([])
   })
 
+  it('renders an externally accepted user message in the focused transcript', () => {
+    const appended: Msg[] = []
+    patchUiState({ sid: 'focused' })
+    const onEvent = createGatewayEventHandler(buildCtx(appended))
+
+    onEvent({
+      session_id: 'focused',
+      payload: { text: 'message from Telegram' },
+      type: 'message.user'
+    })
+
+    expect(appended).toEqual([{ role: 'user', text: 'message from Telegram' }])
+  })
+
   it('archives incomplete todos into transcript flow at end of turn so they scroll up', () => {
     const appended: Msg[] = []
 
